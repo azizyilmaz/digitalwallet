@@ -13,7 +13,7 @@ public class TokenRotationService {
     private final TokenService tokenService;
 
     // run every hour at :00
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "0 0 * * * *")
     public void rotateOldTokens() {
         Instant cutoff = Instant.now().minus(1, ChronoUnit.HOURS);
         var oldTokens = tokenService.findActiveOlderThan(cutoff);

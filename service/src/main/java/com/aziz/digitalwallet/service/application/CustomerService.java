@@ -17,14 +17,14 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
 
     @Transactional
-    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE')")
     public Customer createCustomer(Customer customer) {
         return customerRepository.save(customer);
     }
 
     @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
-    public Customer getCustomer(UUID id) {
-        return customerRepository.findById(id).orElseThrow(() -> new NotFoundException("Customer not found: " + id));
+    public Customer getCustomer(UUID customerId) {
+        return customerRepository.findById(customerId).orElseThrow(() -> new NotFoundException("Customer not found: " + customerId));
     }
 
 }

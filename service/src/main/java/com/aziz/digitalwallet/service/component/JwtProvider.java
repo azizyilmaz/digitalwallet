@@ -23,7 +23,7 @@ public class JwtProvider {
     public String createToken(UUID userId, Set<String> roles) {
         Instant now = Instant.now();
         // 1 hour-> 3600L, 1 minute-> 60L
-        long validitySeconds = 60L;
+        long validitySeconds = 3600L;
         Instant expiry = now.plusSeconds(validitySeconds);
         return Jwts.builder()
                 .setId(UUID.randomUUID().toString())

@@ -45,7 +45,6 @@ public class WalletService {
         return walletRepository.findByCustomerId(customerId);
     }
 
-    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
     public Wallet getWallet(UUID id) {
         return walletRepository.findById(id).orElseThrow(() -> new NotFoundException("Wallet not found: " + id));
     }
