@@ -2,6 +2,6 @@ package com.aziz.digitalwallet.domain.enums;
 
 public enum Currency {
 
-    TRY, USD
+    TRY, USD, EUR, YEN
 
 }

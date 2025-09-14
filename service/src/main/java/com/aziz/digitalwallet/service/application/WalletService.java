@@ -7,6 +7,7 @@ import com.aziz.digitalwallet.domain.model.Wallet;
 import com.aziz.digitalwallet.service.port.CustomerRepository;
 import com.aziz.digitalwallet.service.port.WalletRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ public class WalletService {
     private final CustomerRepository customerRepository;
 
     @Transactional
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
     public Wallet createWallet(UUID customerId, String walletName, Currency currency) {
         Customer customer = customerRepository.findById(customerId).orElseThrow(() -> new NotFoundException("Customer not found: " + customerId));
 
@@ -38,10 +40,12 @@ public class WalletService {
         return walletRepository.save(wallet);
     }
 
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
     public List<Wallet> getWalletsByCustomer(UUID customerId) {
         return walletRepository.findByCustomerId(customerId);
     }
 
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
     public Wallet getWallet(UUID id) {
         return walletRepository.findById(id).orElseThrow(() -> new NotFoundException("Wallet not found: " + id));
     }
