@@ -10,6 +10,8 @@ import com.aziz.digitalwallet.service.port.TransactionRepository;
 import com.aziz.digitalwallet.service.port.WalletRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +26,23 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
 
+    private void ensureAccess(Wallet wallet) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentUserId = auth.getName(); // JWT subject = customerId
+        boolean isEmployee = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_EMPLOYEE"));
+
+        if (!isEmployee && !wallet.getCustomerId().toString().equals(currentUserId)) {
+            throw new BusinessException("Access denied: cannot operate on another customer's wallet");
+        }
+    }
+
     @Transactional
-    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or hasRole('ROLE_CUSTOMER')")
     public Transaction deposit(UUID walletId, BigDecimal amount, String source, String sourceType) {
         Wallet wallet = walletRepository.findById(walletId).orElseThrow(() -> new NotFoundException("Wallet not found: " + walletId));
+
+        ensureAccess(wallet);
 
         Transaction tx = new Transaction();
         tx.setId(UUID.randomUUID());
@@ -35,7 +50,9 @@ public class TransactionService {
         tx.setAmount(amount);
         tx.setType(TransactionType.DEPOSIT);
         tx.setOppositeParty(source);
-        tx.setOppositePartyType("IBAN".equalsIgnoreCase(sourceType) ? com.aziz.digitalwallet.domain.enums.OppositePartyType.IBAN : com.aziz.digitalwallet.domain.enums.OppositePartyType.PAYMENT);
+        tx.setOppositePartyType("IBAN".equalsIgnoreCase(sourceType)
+                ? com.aziz.digitalwallet.domain.enums.OppositePartyType.IBAN
+                : com.aziz.digitalwallet.domain.enums.OppositePartyType.PAYMENT);
 
         if (amount.compareTo(BigDecimal.valueOf(1000)) > 0) {
             tx.setStatus(TransactionStatus.PENDING);
@@ -51,9 +68,11 @@ public class TransactionService {
     }
 
     @Transactional
-    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or hasRole('ROLE_CUSTOMER')")
     public Transaction withdraw(UUID walletId, BigDecimal amount, String destination, String destinationType) {
         Wallet wallet = walletRepository.findById(walletId).orElseThrow(() -> new NotFoundException("Wallet not found: " + walletId));
+
+        ensureAccess(wallet);
 
         if (!wallet.isActiveForWithdraw()) {
             throw new BusinessException("Withdraw not allowed for this wallet");
@@ -65,7 +84,9 @@ public class TransactionService {
         tx.setAmount(amount);
         tx.setType(TransactionType.WITHDRAW);
         tx.setOppositeParty(destination);
-        tx.setOppositePartyType("IBAN".equalsIgnoreCase(destinationType) ? com.aziz.digitalwallet.domain.enums.OppositePartyType.IBAN : com.aziz.digitalwallet.domain.enums.OppositePartyType.PAYMENT);
+        tx.setOppositePartyType("IBAN".equalsIgnoreCase(destinationType)
+                ? com.aziz.digitalwallet.domain.enums.OppositePartyType.IBAN
+                : com.aziz.digitalwallet.domain.enums.OppositePartyType.PAYMENT);
 
         if (amount.compareTo(BigDecimal.valueOf(1000)) > 0) {
             tx.setStatus(TransactionStatus.PENDING);
@@ -83,8 +104,13 @@ public class TransactionService {
         return transactionRepository.save(tx);
     }
 
-    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or principal == #customerId.toString()")
+    @PreAuthorize("hasRole('ROLE_EMPLOYEE') or hasRole('ROLE_CUSTOMER')")
     public List<Transaction> listTransactions(UUID walletId) {
+        Wallet wallet = walletRepository.findById(walletId)
+                .orElseThrow(() -> new NotFoundException("Wallet not found: " + walletId));
+
+        ensureAccess(wallet);
+
         return transactionRepository.findByWalletId(walletId);
     }
 }
